@@ -15,6 +15,7 @@ Open `index.html` in a browser. It is a single file with no build step and no de
 - Drag along a rod to slide the weight and retune that metronome. Click one to knock it out of step.
 - Coupling strength is measured against the exact threshold at which all of your tempos can lock (marked "all lock").
   Auto-ramp raises it slowly so metronomes join the beat one at a time. Moving the slider yourself switches the ramp off.
+- Speed: any whole number from 1× to 1000× (slider, number box or quick buttons). The physics gives the same result at every speed; at 1000× a 90 second ramp takes about a fifth of a second. Tick sounds switch off above 6× and the tick flashes above 40×.
 - Sound: each metronome ticks at its own pitch (pentatonic, slowest is lowest), so you can hear a chord form as they line up.
 - **Exact sync sound effect.** When every pendulum is within 3° of the crowd's average (about 9 ms at 100 BPM, tight enough that the
   ticks fuse into a single click), the sync reads 100% and a sound effect plays: a low impact, a bright chord that rings out, an upward

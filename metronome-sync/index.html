@@ -134,6 +134,7 @@ button{font:inherit;color:inherit}
 .chip{padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text-2);font:500 12px/1 var(--font-ui);cursor:pointer;
   transition:all .15s}
 .chip:hover{color:var(--text);border-color:var(--line-2)}
+.chip.on{color:var(--brass-2);border-color:rgba(217,169,71,.5);background:rgba(217,169,71,.12)}
 .btn{padding:9px 12px;border-radius:11px;border:1px solid var(--line-2);background:rgba(255,255,255,.05);color:var(--text);font:600 12.5px/1 var(--font-ui);
   cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,border-color .15s}
 .btn:hover{background:rgba(255,255,255,.1)}
@@ -176,6 +177,8 @@ input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 2px var(--bra
 .notch{position:absolute;top:0;width:0;left:calc(9px + (100% - 18px) * var(--n,.5));pointer-events:none}
 .notch::before{content:"";position:absolute;left:-1px;top:13px;width:2px;height:8px;border-radius:1px;background:var(--lock);opacity:.95}
 .notch span{position:absolute;top:0;left:0;transform:translateX(-50%);white-space:nowrap;font:600 9.5px/1 var(--font-ui);letter-spacing:.1em;text-transform:uppercase;color:var(--lock)}
+.numin{width:70px;padding:4px 6px;border-radius:8px;border:1px solid var(--line-2);background:rgba(255,255,255,.06);color:var(--brass-2);font:500 12.5px/1 var(--font-mono);text-align:right}
+.numin:focus-visible{outline:2px solid var(--brass-2);outline-offset:1px}
 .hint{font:400 12px/1.45 var(--font-ui);color:var(--text-3)}
 .hint kbd,.kbd{font:500 10.5px var(--font-mono);padding:1px 5px;border-radius:5px;border:1px solid var(--line-2);background:rgba(255,255,255,.05);color:var(--text-2)}
 .link{background:none;border:0;padding:0;color:var(--brass-2);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:inherit}
@@ -375,12 +378,15 @@ html.lite .icon-btn{background:rgba(10,16,23,.9)}
 
     <div class="sec">
       <h2>Playback</h2>
-      <div class="row"><span class="lbl">Speed</span>
-        <div class="seg" role="radiogroup" aria-label="Playback speed" id="segSpeed"><button role="radio" aria-checked="false" data-v="0.5">½×</button><button role="radio" aria-checked="true" data-v="1">1×</button><button role="radio" aria-checked="false" data-v="2">2×</button><button role="radio" aria-checked="false" data-v="4">4×</button></div></div>
-      <div class="row"><div><div class="lbl" id="soundLbl">Sound</div><div class="sub">Each metronome has its own pitch</div></div>
+      <div class="field">
+        <div class="row"><label class="lbl" for="speedNum">Speed</label><span class="val"><input type="number" class="numin" id="speedNum" min="1" max="1000" step="1" value="1" inputmode="numeric"> ×</span></div>
+        <input type="range" id="speed" min="0" max="1000" step="1" value="0" aria-label="Speed from 1 to 1000 times">
+        <div class="chips" id="speedChips"><button class="chip" data-s="1">1×</button><button class="chip" data-s="5">5×</button><button class="chip" data-s="25">25×</button><button class="chip" data-s="100">100×</button><button class="chip" data-s="1000">1000×</button></div>
+      </div>
+      <div class="row"><div><div class="lbl" id="soundLbl">Sound</div><div class="sub" id="soundSub">Each metronome has its own pitch</div></div>
         <button class="sw" id="swSound" role="switch" aria-checked="true" aria-labelledby="soundLbl"></button></div>
-      <div class="field"><div class="row"><label class="lbl" for="volume">Volume</label><span class="val" id="volVal">70%</span></div>
-        <input type="range" id="volume" min="0" max="100" step="1" value="70"></div>
+      <div class="field"><div class="row"><label class="lbl" for="volume">Volume</label><span class="val" id="volVal">55%</span></div>
+        <input type="range" id="volume" min="0" max="100" step="1" value="55"></div>
       <button class="link" id="btnPreview" style="justify-self:start">Preview the exact-sync sound</button>
     </div>
 
@@ -428,7 +434,7 @@ html.lite .icon-btn{background:rgba(10,16,23,.9)}
       <ul>
         <li>After the ramp finishes, widen the tempo range. Coupling stays where it was, so the extremes fall out of step and the all-lock mark moves.</li>
         <li>Once everything is locked, lower the coupling to about 1.00× and drag one weight far from the others. It breaks away while the rest keep going. At high coupling the group drags it along.</li>
-        <li>Set the speed to 4× to see a long ramp in less time.</li>
+        <li>Set the speed as high as 1000× to watch a long ramp in a few seconds. Tick sounds switch off above 6×, and the rods blur above 40×.</li>
       </ul></div>
     <div><h3>Sources</h3>
       <ul>
@@ -458,7 +464,6 @@ const TAU = Math.PI * 2, HALF_PI = Math.PI / 2;
 const N_MIN = 2, N_MAX = 40, BPM_LO = 30, BPM_HI = 240;
 const AMP = 0.42;                              // swing amplitude in radians
 const DT = 1 / 240;                            // fixed physics step (sim seconds)
-const MAX_STEPS = 700;
 const TAU_F = 2.5;                             // smoothing for the live tempo readout (sim seconds)
 const K_START = 0.35, K_LOCK_END = 1.05, K_END = 3.6;   // coupling milestones, in units of the lock threshold
 const RAMP_A = 0.70, RAMP_B = 0.12, RAMP_C = 0.18;      // share of the ramp time: form the cluster, lock everyone, then tighten
@@ -718,27 +723,34 @@ function update(dtReal) {
   flashRing = Math.max(0, flashRing - dtReal * 0.9);
   if (S.paused) return;
   const sdt = dtReal * S.speed;
-  if (rampActive()) {
-    const T = S.ramp.T, k = S.kRel;
-    if (k < K_LOCK_END) S.kRel = Math.min(K_LOCK_END, k + (K_LOCK_END - K_START) / (RAMP_A * T) * sdt);
-    else if (k < K_END) S.kRel = Math.min(K_END, k + (K_END - K_LOCK_END) / (RAMP_B * T) * sdt);
-    else S.kRel = Math.min(S.kFinal, k * Math.exp(Math.log(S.kFinal / K_END) / (RAMP_C * T) * sdt));   // geometric: each doubling takes equal time
-    if (S.kRel >= S.kFinal) S.rampDone = true;
-    S.K = S.kRel * S.KLeff; syncCouplingUI();
+  // Work through the frame in chunks of at most 0.25 simulated seconds, so the ramp, the analysis and the
+  // chart history stay correct even at 1000x (one frame is then ~16 simulated seconds).
+  let remain = sdt, tFrame = 0; const t0 = performance.now(); evN = 0;
+  while (remain > 1e-9) {
+    const chunk = Math.min(remain, 0.25); remain -= chunk;
+    if (rampActive()) {
+      const T = S.ramp.T, k = S.kRel;
+      if (k < K_LOCK_END) S.kRel = Math.min(K_LOCK_END, k + (K_LOCK_END - K_START) / (RAMP_A * T) * chunk);
+      else if (k < K_END) S.kRel = Math.min(K_END, k + (K_END - K_LOCK_END) / (RAMP_B * T) * chunk);
+      else S.kRel = Math.min(S.kFinal, k * Math.exp(Math.log(S.kFinal / K_END) / (RAMP_C * T) * chunk));   // geometric: each doubling takes equal time
+      if (S.kRel >= S.kFinal) S.rampDone = true;
+      S.K = S.kRel * S.KLeff;
+    }
+    // step size: fine at normal speed, coarser when fast-forwarding, and always small enough for the current coupling
+    const h = Math.min(S.speed > 30 ? 1 / 90 : DT, 0.35 / Math.max(1, S.K));
+    acc += chunk; let st = 0;
+    while (acc >= h) { advance(h, tFrame + st); acc -= h; st += h; }
+    tFrame += st; S.time += st;
+    if (st > 0) analyze(st);
+    if (remain > 0 && performance.now() - t0 > 14) break;      // never let one frame take longer than ~14 ms of physics
   }
-  // step size shrinks as coupling gets very stiff (the last stage of the ramp)
-  const h = Math.min(DT, 0.35 / Math.max(1, S.K));
-  acc += sdt; let steps = 0, tcur = 0; evN = 0;
-  while (acc >= h && steps < MAX_STEPS) { advance(h, tcur); acc -= h; tcur += h; steps++; }
-  if (steps >= MAX_STEPS) acc = 0;
-  const done = tcur;
-  S.time += done;
-  if (done > 0) analyze(done);
+  if (rampActive()) syncCouplingUI();
   // tick events → pulses + audio
-  const voiceCap = S.speed > 2.5 ? 8 : 20; Aud.budget = voiceCap;
+  Aud.budget = S.speed > 2.5 ? 8 : 20;
+  const tickSound = S.speed <= 6, tickFlash = S.speed <= 40;      // beyond that the ticks are a blur, so skip them
   for (let e = 0; e < evN; e++) {
-    const i = evI[e]; S.pulse[i] = 1; S.tickN[i]++;
-    Aud.tick(i, Math.min(evT[e] / Math.max(S.speed, .25), 0.05));
+    const i = evI[e]; S.tickN[i]++; if (tickFlash) S.pulse[i] = 1;
+    if (tickSound) Aud.tick(i, Math.min(evT[e] / Math.max(S.speed, .25), 0.05));
   }
 }
 function advanceSeconds(sec) {            // headless fast-forward (used for tests)
@@ -787,8 +799,25 @@ function sfxExact(c, dest, t) {
   ag.gain.setValueAtTime(0.0001, t); ag.gain.linearRampToValueAtTime(0.12, t + 0.3); ag.gain.exponentialRampToValueAtTime(0.0004, t + 0.85);
   sw.connect(bp); bp.connect(ag); ag.connect(out); sw.start(t); sw.stop(t + 0.9);
 }
+/* One tick: a pitched wood-block. The fundamental sits at C5 and above, because laptop and phone speakers barely reproduce
+   anything lower, plus a short bright click so every tick is audible even when the pitched part is not. */
+function sfxTick(c, dest, noise, f, a, t, pan) {
+  const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = pan; p.connect(dest); }
+  const out = p || dest;
+  const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(a, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.14);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.16);
+  const o2 = c.createOscillator(), g2 = c.createGain(); o2.type = 'sine'; o2.frequency.value = f * 2.76;
+  g2.gain.setValueAtTime(a * 0.4, t); g2.gain.exponentialRampToValueAtTime(0.0005, t + 0.05);
+  o2.connect(g2); g2.connect(out); o2.start(t); o2.stop(t + 0.06);
+  if (noise) {
+    const ns = c.createBufferSource(), hp = c.createBiquadFilter(), gn = c.createGain(); ns.buffer = noise; hp.type = 'highpass'; hp.frequency.value = 1800;
+    gn.gain.setValueAtTime(a * 0.8, t); gn.gain.exponentialRampToValueAtTime(0.0005, t + 0.02);
+    ns.connect(hp); hp.connect(gn); gn.connect(out); ns.start(t); ns.stop(t + 0.03);
+  }
+}
 const Aud = {
-  ctx: null, bus: null, noise: null, on: true, vol: 0.7, budget: 0, played: 0,
+  ctx: null, bus: null, noise: null, on: true, vol: 0.55, budget: 0, played: 0,
   init() {
     if (this.ctx) return;
     try {
@@ -796,34 +825,35 @@ const Aud = {
       this.ctx = new AC({ latencyHint: 'interactive' });
       const comp = this.ctx.createDynamicsCompressor();
       comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 5; comp.attack.value = 0.002; comp.release.value = 0.16;
-      this.bus = this.ctx.createGain(); this.bus.connect(comp); comp.connect(this.ctx.destination);
+      const lim = this.ctx.createDynamicsCompressor();       // brick-wall-ish limiter so a loud moment never clips
+      lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.06;
+      this.bus = this.ctx.createGain(); this.bus.connect(comp); comp.connect(lim); lim.connect(this.ctx.destination);
+      this.ctx.onstatechange = () => audioStatus();
       const len = Math.floor(this.ctx.sampleRate * 0.04), buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.noise = buf; this.setVol(this.vol);
     } catch (e) { this.ctx = null; }
   },
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); },
-  setVol(v) { this.vol = v; if (this.bus) this.bus.gain.value = v * v * 0.85; },
-  freq(rank, n) {
-    const PENTA = [0, 2, 4, 7, 9], step = Math.round(rank / Math.max(1, n - 1) * 14);
-    return 261.63 * Math.pow(2, (PENTA[step % 5] + 12 * Math.floor(step / 5)) / 12);
+  resume() { return this.ctx && this.ctx.state !== 'running' ? this.ctx.resume().catch(() => {}) : Promise.resolve(); },
+  setVol(v) { this.vol = v; if (this.bus) this.bus.gain.value = v * v * 1.5; },
+  freq(rank, n) {                            // two octaves of C pentatonic from C5, slowest metronome lowest
+    const PENTA = [0, 2, 4, 7, 9], step = Math.round(rank / Math.max(1, n - 1) * 9);
+    return 523.25 * Math.pow(2, (PENTA[step % 5] + 12 * Math.floor(step / 5)) / 12);
   },
   tick(i, delay) {
-    const c = this.ctx; if (!c || !this.on || c.state !== 'running' || this.budget <= 0) return;
+    const c = this.ctx; if (!c || !this.on || this.budget <= 0) return;
+    if (c.state !== 'running') { this.resume(); return; }
     this.budget--; this.played++;
-    const n = S.n, f = this.freq(S.rank[i], n), t = c.currentTime + 0.012 + delay, a = 0.9 / Math.pow(n, 0.75);
-    const pan = clamp(((M.x[i] - G.cx) / Math.max(1, G.HW)) * 0.8, -0.8, 0.8);
-    const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = pan; p.connect(this.bus); }
-    const out = p || this.bus;
-    const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f;
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(a, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.12);
-    o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.14);
-    const o2 = c.createOscillator(), g2 = c.createGain(); o2.type = 'sine'; o2.frequency.value = f * 2.76;
-    g2.gain.setValueAtTime(a * 0.35, t); g2.gain.exponentialRampToValueAtTime(0.0005, t + 0.04);
-    o2.connect(g2); g2.connect(out); o2.start(t); o2.stop(t + 0.05);
-    const ns = c.createBufferSource(), bp = c.createBiquadFilter(), gn = c.createGain(); ns.buffer = this.noise; bp.type = 'bandpass'; bp.frequency.value = Math.min(f * 3, 9000); bp.Q.value = 1.1;
-    gn.gain.setValueAtTime(a * 0.7, t); gn.gain.exponentialRampToValueAtTime(0.0005, t + 0.022);
-    ns.connect(bp); bp.connect(gn); gn.connect(out); ns.start(t); ns.stop(t + 0.03);
+    const n = S.n, pan = clamp(((M.x[i] - G.cx) / Math.max(1, G.HW)) * 0.8, -0.8, 0.8);
+    sfxTick(c, this.bus, this.noise, this.freq(S.rank[i], n), Math.min(0.55, 1.5 / Math.pow(n, 0.6)), c.currentTime + 0.012 + delay, pan);
+  },
+  blip() {                                   // sound check, played when sound is switched on
+    const c = this.ctx; if (!c || !this.on || c.state !== 'running') return;
+    [880, 1318.5].forEach((f, k) => {
+      const t = c.currentTime + 0.02 + k * 0.1, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.28, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.28);
+      o.connect(g); g.connect(this.bus); o.start(t); o.stop(t + 0.3);
+    });
   },
   ping() {                                   // soft two-note "all locked in" cue
     const c = this.ctx; if (!c || !this.on || c.state !== 'running') return;
@@ -1336,7 +1366,7 @@ function toast(msg) { el.toastText.textContent = msg; el.toast.classList.add('on
 const ctl = {
   count: $('count'), countVal: $('countVal'), lo: $('bpmLo'), hi: $('bpmHi'), dual: $('dual'), rangeVal: $('rangeVal'), rangeNames: $('rangeNames'),
   coupling: $('coupling'), couplingVal: $('couplingVal'), notch: $('notch'), swRamp: $('swRamp'), rampRow: $('rampRow'),
-  swSound: $('swSound'), volume: $('volume'), volVal: $('volVal'), btnPause: $('btnPause'), btnSound: $('btnSound'),
+  speed: $('speed'), speedNum: $('speedNum'), swSound: $('swSound'), volume: $('volume'), volVal: $('volVal'), btnPause: $('btnPause'), btnSound: $('btnSound'),
 };
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path class="fill" d="M8 5.5v13l10.5-6.5z"/></svg>',
@@ -1381,9 +1411,15 @@ function reroll() { reseed((Math.random() * 4294967296) >>> 0); retune(); restar
 function setPaused(p) {
   S.paused = p; ctl.btnPause.innerHTML = p ? ICON.play : ICON.pause; ctl.btnPause.setAttribute('aria-pressed', String(p)); ctl.btnPause.setAttribute('aria-label', p ? 'Resume' : 'Pause'); hudNow();
 }
+function audioStatus() {
+  const sub = $('soundSub'); if (!sub) return;
+  sub.textContent = !Aud.on ? 'Sound is off' : Aud.ctx && Aud.ctx.state === 'running' ? 'Each metronome has its own pitch' : 'Tap anywhere to unlock audio';
+}
 function setSound(on) {
   Aud.on = on; ctl.swSound.setAttribute('aria-checked', String(on)); ctl.btnSound.setAttribute('aria-pressed', String(on));
-  ctl.btnSound.innerHTML = on ? ICON.soundOn : ICON.soundOff; if (on) { Aud.init(); Aud.resume(); }
+  ctl.btnSound.innerHTML = on ? ICON.soundOn : ICON.soundOff;
+  if (on) { Aud.init(); Aud.resume().then(() => { audioStatus(); Aud.blip(); }); }
+  audioStatus();
 }
 function segSet(seg, val) { seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === String(val)))); }
 function segBind(seg, fn) { seg.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; segSet(seg, b.dataset.v); fn(b.dataset.v); }); }
@@ -1400,7 +1436,19 @@ function setRamp(on) {
 }
 ctl.swRamp.addEventListener('click', () => setRamp(!S.ramp.on));
 segBind($('segRamp'), v => { S.ramp.T = +v; });
-segBind($('segSpeed'), v => { S.speed = +v; });
+// speed: any whole number from 1 to 1000. The slider is logarithmic so the low end keeps fine control.
+const speedFromSlider = v => clamp(Math.round(Math.pow(1000, v / 1000)), 1, 1000);
+const sliderFromSpeed = x => Math.round(1000 * Math.log(x) / Math.log(1000));
+function setSpeed(x) {
+  x = clamp(Math.round(+x) || 1, 1, 1000); S.speed = x;
+  if (document.activeElement !== ctl.speedNum) ctl.speedNum.value = x;
+  ctl.speed.value = sliderFromSpeed(x); setFill(ctl.speed);
+  document.querySelectorAll('#speedChips .chip').forEach(b => b.classList.toggle('on', +b.dataset.s === x));
+}
+ctl.speed.addEventListener('input', () => setSpeed(speedFromSlider(+ctl.speed.value)));
+ctl.speedNum.addEventListener('input', () => { const v = parseInt(ctl.speedNum.value, 10); if (v >= 1) setSpeed(v); });
+ctl.speedNum.addEventListener('change', () => { ctl.speedNum.value = clamp(parseInt(ctl.speedNum.value, 10) || 1, 1, 1000); setSpeed(ctl.speedNum.value); });
+$('speedChips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSpeed(b.dataset.s); });
 segBind($('segArrange'), v => { S.arrange = v; relayout(); });
 ctl.swSound.addEventListener('click', () => setSound(!Aud.on));
 ctl.btnSound.addEventListener('click', () => setSound(!Aud.on));
@@ -1441,6 +1489,9 @@ $('btnHelp').addEventListener('click', openHelp); $('btnHelp2').addEventListener
 $('helpClose').addEventListener('click', () => helpDlg.close());
 helpDlg.addEventListener('click', e => { if (e.target === helpDlg) helpDlg.close(); });
 
+// browsers keep audio locked until a gesture; any tap or key press unlocks it, and coming back to the tab does too
+['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, () => { if (Aud.on && introGone) { Aud.init(); Aud.resume(); } }, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Aud.on) Aud.resume(); });
 window.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target, typing = t && (t.tagName === 'INPUT' && t.type !== 'range' || t.tagName === 'TEXTAREA');
@@ -1560,7 +1611,7 @@ reseed((Math.random() * 4294967296) >>> 0);
 setPaused(false); setSound(false); Aud.on = false;
 mqPhone.matches && ui.root.classList.remove('rail-open');
 $('btnPanel').setAttribute('aria-pressed', String(!mqPhone.matches));
-[ctl.count, ctl.lo, ctl.hi, ctl.coupling, ctl.volume].forEach(setFill);
+[ctl.count, ctl.lo, ctl.hi, ctl.coupling, ctl.volume, ctl.speed].forEach(setFill); setSpeed(1);
 retune(); S.K = S.kRel * S.KLeff; for (let i = 0; i < S.n; i++) S.appear[i] = 1;
 resetPhases(); syncCouplingUI(); syncRangeUI(); setFill(ctl.count); setFill(ctl.volume);
 window.addEventListener('resize', resize);
@@ -1570,7 +1621,7 @@ requestAnimationFrame(t => { last = t; frame(t); });
 $('startSound').focus({ preventScroll: true });
 
 // small hook for automated checks
-window.__metronomeSync = { S, Aud, perf, goLite, retune, syncCouplingUI, sfxExact, advanceSeconds, relayout, restart, setCount, setRange, lockThreshold, start };
+window.__metronomeSync = { S, Aud, perf, sfxTick, setSpeed, goLite, retune, syncCouplingUI, sfxExact, advanceSeconds, relayout, restart, setCount, setRange, lockThreshold, start };
 })();
 </script>
 </body>
