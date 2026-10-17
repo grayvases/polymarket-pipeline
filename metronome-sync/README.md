@@ -16,6 +16,11 @@ Open `index.html` in a browser. It is a single file with no build step and no de
 - Coupling strength is measured against the exact threshold at which all of your tempos can lock (marked "all lock").
   Auto-ramp raises it slowly so metronomes join the beat one at a time. Moving the slider yourself switches the ramp off.
 - Sound: each metronome ticks at its own pitch (pentatonic, slowest is lowest), so you can hear a chord form as they line up.
+- **Exact sync sound effect.** When every pendulum is within 3° of the crowd's average (about 9 ms at 100 BPM, tight enough that the
+  ticks fuse into a single click), the sync reads 100% and a sound effect plays: a low impact, a bright chord that rings out, an upward
+  sparkle and an air sweep. A soft two-note ping plays earlier, when everyone has locked but is still a few degrees apart.
+  "Preview the exact-sync sound" in the Sound section plays it on demand. Knocking a metronome out of step and watching it snap
+  back does not replay it; losing exact sync for more than a second and a half does.
 - Charts: a phase ring, every metronome's live tempo over time, and sync over time.
 
 Keyboard: `Space` pause, `R` restart, `N` new tempos, `M` mute, `C` controls, `?` help.
@@ -38,12 +43,18 @@ Details worth knowing:
   `K_L = min over u ≥ max|Δᵢ| of u / r(u)`, with `r(u) = mean √(1 − (Δᵢ/u)²)` and `Δᵢ = ωᵢ − mean(ω)`.
   The coupling slider is expressed as `K / K_L`.
 - **Sync %.** The order parameter `r`, corrected for the alignment N random phases show by chance
-  (`≈ 0.886/√N`), so that "0%" means unsynced even for small N.
+  (`≈ 0.886/√N`), so that "0%" means unsynced even for small N. The display stops at 99% until sync is exact.
+- **Exact sync.** Locked metronomes still sit a few degrees apart, because a finite coupling leaves each one a phase offset of
+  `asin(Δᵢ / K·r)`. Exact means the widest offset from the crowd's mean phase is under 0.05 rad (2.9°) for 0.6 s with coupling at or above
+  the lock threshold, and it is lost beyond 0.25 rad (14°).
 - **Locked.** Live tempo is a smoothed `dθ/dt`. Locked means within a small window of the largest tempo cluster, and
   that cluster's phases are coherent beyond chance. A hysteresis stops the labels flickering.
-- **Auto-ramp.** Coupling rises from 0.35 K_L to 1.05 K_L over 78% of the chosen time (where the cluster forms and
-  recruits), then to 3.6 K_L so phases tighten toward 100%.
-- **Integration.** Heun's method at a fixed 240 Hz step in simulated time, independent of the display's frame rate.
+- **Auto-ramp.** Coupling rises from 0.35 K_L to 1.05 K_L over 70% of the chosen time (where the cluster forms and
+  recruits), to 3.6 K_L over the next 12% (everyone locks), then geometrically to `40 × max|Δᵢ|` over the last 18%. That final value
+  shrinks the phase offsets to about 1.4°, which is what makes exact sync reachable. The coupling slider's last 10% of travel
+  reaches the same territory by hand (up to 50 K_L).
+- **Integration.** Heun's method in simulated time, independent of the display's frame rate: 240 Hz, with a smaller step when
+  coupling gets very stiff at the end of the ramp.
 - **Audio.** Web Audio, one short pitched wood-block voice per tick, scheduled on the audio clock and run through a compressor.
 
 If the frame rate stays low, the app drops backdrop blur, glow haze and canvas resolution automatically.
